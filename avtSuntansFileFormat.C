@@ -75,6 +75,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if (VTK_MAJOR_VERSION>5)
+#include <vtkStreamingDemandDrivenPipeline.h>
+#endif
+
 #if defined(_WIN32)
  #include <win32-regex.h>
 #else
@@ -1236,7 +1240,15 @@ vtkDataSet* SunGrid::ReadSurfaceMesh() {
         ghostCells->InsertNextValue(realval);
     }
     surf_mesh->GetCellData()->AddArray(ghostCells);
+
+#if (VTK_MAJOR_VERSION<6)
     surf_mesh->SetUpdateGhostLevel(0);
+#else
+    // For VTK 6 this is supposed to work
+    // based on https://elist.ornl.gov/pipermail/visit-users/2013-December/015366.html
+    // but even more recent VTK I believe has deprecated even this call.
+    vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(surf_mesh->GetInformation(), 0);
+#endif
     ghostCells->Delete();
   }
   surf_mesh->Register(NULL);
