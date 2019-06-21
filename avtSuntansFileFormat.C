@@ -64,11 +64,19 @@
 
 #include <InvalidVariableException.h>
 
+
 #include <StringHelpers.h>
+#include <FileFunctions.h>
+#if 0
+#  define genDirname(x) StringHelpers::Dirname(x)
+#  define genBasename(x) StringHelpers::Basename(x)
+#else
+#  define genDirname(x) FileFunctions::Dirname(x)
+#  define genBasename(x) FileFunctions::Basename(x)
+#endif
+
 // In Visit 2.0, ReadAndProcessDirectory has moved:
 // #include <Utility.h>
-#include <FileFunctions.h>
-
 
 #include <DebugStream.h>
 #include <sys/types.h>
@@ -84,6 +92,7 @@
 #else
  #include <regex.h>
 #endif
+
 
 
 using     std::string;
@@ -264,7 +273,7 @@ SunGrid *avtSuntansFileFormat::subdomain(int domain) {
 // given the type of file, e.g. SalinityFile, return
 // a path that can be used to open that file
 std::string avtSuntansFileFormat::GetFilePath(std::string config_name) {
-  string my_path = StringHelpers::Dirname(GetFilename());
+  string my_path = genDirname(GetFilename());
 
   // special handling of CrashFile, since it doesn't get configured via
   // suntans.dat
@@ -738,7 +747,7 @@ void save_file_name(void *data, const std::string &filename, bool a, bool b, lon
 
 void avtSuntansFileFormat::AddDynamicFiles(avtDatabaseMetaData *md)
 {
-  string datadir = StringHelpers::Dirname(GetFilename());
+  string datadir = genDirname(GetFilename());
   std::vector<std::string> filenames;
   regex_t cre;
   regmatch_t pm[10];
@@ -759,15 +768,23 @@ void avtSuntansFileFormat::AddDynamicFiles(avtDatabaseMetaData *md)
     return;
   }
 
+#if 0
+  // In some older versions of visit, this could be used without a namespace.
   ReadAndProcessDirectory( datadir,
                            save_file_name,
                            &filenames,
                            false );
+#else
+    // at least in 2.10.3, though, it needs to be specified
+    FileFunctions::ReadAndProcessDirectory( datadir,
+                                            (FileFunctions::ProcessDirectoryCallback*)save_file_name,
+                                            (void*)&filenames, false );
+#endif
 
   LocalMetadata lmd;
   
   for (int i=0; i < filenames.size(); i++ ){
-    string basename = StringHelpers::Basename(filenames[i].c_str());
+    string basename = genBasename(filenames[i].c_str());
     debug1 << "Considering file " << basename << endl;
     
     buff = basename.c_str();
